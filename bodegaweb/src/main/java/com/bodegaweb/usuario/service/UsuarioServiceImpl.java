@@ -4,9 +4,9 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.bodegaweb.exceptions.DuplicateResourceException;
-import com.bodegaweb.exceptions.InvalidCredentialsException;
-import com.bodegaweb.exceptions.ResourceNotFoundException;
+import com.bodegaweb.common.exception.DuplicateResourceException;
+import com.bodegaweb.common.exception.InvalidCredentialsException;
+import com.bodegaweb.common.exception.ResourceNotFoundException;
 import com.bodegaweb.usuario.dto.UsuarioLoginRequest;
 import com.bodegaweb.usuario.dto.UsuarioRequest;
 import com.bodegaweb.usuario.dto.UsuarioResponse;

@@ -1,4 +1,4 @@
-package com.bodegaweb.exceptions;
+package com.bodegaweb.common.exception;
 
 public class InvalidCredentialsException extends RuntimeException {
 
