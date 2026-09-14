@@ -1,4 +1,4 @@
-package com.bodegaweb.bodegaweb;
+package com.bodegaweb;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
