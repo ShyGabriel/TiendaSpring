@@ -1,5 +1,6 @@
 package com.bodegaweb.catalogo.producto;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,9 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     boolean existsBySkuAndIdNot(String sku, Long id);
 
     boolean existsByCategoriaId(Long categoriaId);
+
+    /** Usado al eliminar una categoría, para desvincular sus productos (equivalente a ON DELETE SET NULL). */
+    List<Producto> findByCategoriaId(Long categoriaId);
 
     @Query(value = """
             select p from Producto p

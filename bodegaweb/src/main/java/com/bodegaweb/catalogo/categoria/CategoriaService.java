@@ -3,6 +3,8 @@ package com.bodegaweb.catalogo.categoria;
 import com.bodegaweb.catalogo.categoria.dto.CategoriaRequest;
 import com.bodegaweb.catalogo.categoria.dto.CategoriaResponse;
 import com.bodegaweb.catalogo.categoria.dto.CategoriaTreeResponse;
+import com.bodegaweb.catalogo.producto.Producto;
+import com.bodegaweb.catalogo.producto.ProductoRepository;
 import com.bodegaweb.common.exception.BusinessException;
 import com.bodegaweb.common.exception.DuplicateResourceException;
 import com.bodegaweb.common.exception.ResourceNotFoundException;
@@ -18,9 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class CategoriaService {
 
     private final CategoriaRepository repository;
+    private final ProductoRepository productoRepository;
 
-    public CategoriaService(CategoriaRepository repository) {
+    public CategoriaService(CategoriaRepository repository, ProductoRepository productoRepository) {
         this.repository = repository;
+        this.productoRepository = productoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -80,15 +84,21 @@ public class CategoriaService {
 
     public void eliminar(Long id) {
         Categoria categoria = buscar(id);
-        // Coincide con las FK del esquema:
+        // Réplica en aplicación del comportamiento previsto por el esquema para las FK:
         //   categorias.categoria_padre_id  -> ON DELETE SET NULL
         //   productos.categoria_id         -> ON DELETE SET NULL
-        // Desvinculamos los hijos en el contexto de persistencia para dejarlo consistente;
-        // los productos quedan con categoria_id = NULL por la FK de la base.
+        // No se asume que la FK generada por Hibernate (ddl-auto=update) tenga esa regla,
+        // así que se desvincula explícitamente antes de borrar.
         List<Categoria> hijos = repository.findByCategoriaPadreIdOrderByNombreAsc(id);
         hijos.forEach(h -> h.setCategoriaPadre(null));
         repository.saveAll(hijos);
+
+        List<Producto> productos = productoRepository.findByCategoriaId(id);
+        productos.forEach(p -> p.setCategoria(null));
+        productoRepository.saveAll(productos);
+
         repository.flush();
+        productoRepository.flush();
 
         repository.delete(categoria);
     }
