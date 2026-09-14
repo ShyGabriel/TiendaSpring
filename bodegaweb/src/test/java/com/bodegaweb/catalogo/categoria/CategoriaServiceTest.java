@@ -41,6 +41,28 @@ class CategoriaServiceTest {
     private CategoriaService service;
 
     @Test
+    void listarSinPadreIdDevuelveSoloRaicesOrdenadas() {
+        Categoria raiz = categoria(1L, "Ropa", null);
+        when(repository.findByCategoriaPadreIsNullOrderByNombreAsc()).thenReturn(List.of(raiz));
+
+        List<CategoriaResponse> resp = service.listar(null);
+
+        assertThat(resp).extracting(CategoriaResponse::id).containsExactly(1L);
+        verify(repository, never()).findAll();
+    }
+
+    @Test
+    void listarConPadreIdDevuelveSusHijasDirectas() {
+        Categoria padre = categoria(1L, "Ropa", null);
+        Categoria hijo = categoria(2L, "Camisas", padre);
+        when(repository.findByCategoriaPadreIdOrderByNombreAsc(1L)).thenReturn(List.of(hijo));
+
+        List<CategoriaResponse> resp = service.listar(1L);
+
+        assertThat(resp).extracting(CategoriaResponse::id).containsExactly(2L);
+    }
+
+    @Test
     void crearGeneraSlugDesdeElNombreCuandoNoSeEnvia() {
         when(repository.existsBySlug("television-4k")).thenReturn(false);
         when(repository.save(any(Categoria.class))).thenAnswer(inv -> inv.getArgument(0));

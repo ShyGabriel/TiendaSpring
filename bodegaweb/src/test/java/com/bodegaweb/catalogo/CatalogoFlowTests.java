@@ -67,6 +67,18 @@ class CatalogoFlowTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].subcategorias[0].nombre", is("Laptops")));
 
+        // 3b. Listado sin padreId: solo raíces (no mezcla la subcategoría)
+        mvc().perform(get("/api/categorias"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()", is(1)))
+                .andExpect(jsonPath("$.data[0].nombre", is("Electrónica")));
+
+        // 3c. Listado con padreId: solo las hijas directas de esa categoría
+        mvc().perform(get("/api/categorias").param("padreId", String.valueOf(raizId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()", is(1)))
+                .andExpect(jsonPath("$.data[0].nombre", is("Laptops")));
+
         // 4. Producto con inventario inicial
         String prodBody = mvc().perform(post("/api/productos")
                         .contentType(MediaType.APPLICATION_JSON)

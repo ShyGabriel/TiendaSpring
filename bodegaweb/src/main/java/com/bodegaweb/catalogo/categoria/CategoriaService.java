@@ -27,10 +27,15 @@ public class CategoriaService {
         this.productoRepository = productoRepository;
     }
 
+    /**
+     * Sin {@code padreId}: solo categorías raíz (nivel superior), ordenadas por nombre.
+     * Con {@code padreId}: solo las hijas directas de esa categoría, ordenadas por nombre.
+     * Para el listado completo aplanado no hay endpoint; para la jerarquía completa está {@link #arbol()}.
+     */
     @Transactional(readOnly = true)
     public List<CategoriaResponse> listar(Long padreId) {
         List<Categoria> categorias = (padreId == null)
-                ? repository.findAll()
+                ? repository.findByCategoriaPadreIsNullOrderByNombreAsc()
                 : repository.findByCategoriaPadreIdOrderByNombreAsc(padreId);
         return categorias.stream().map(CategoriaMapper::toResponse).toList();
     }
