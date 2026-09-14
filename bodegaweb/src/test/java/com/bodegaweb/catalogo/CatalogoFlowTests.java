@@ -122,6 +122,11 @@ class CatalogoFlowTests {
                                 """))
                 .andExpect(status().isUnprocessableEntity());
 
+        // 7b. Pedir una pagina enorme queda topada por spring.data.web.pageable.max-page-size
+        mvc().perform(get("/api/productos").param("size", "99999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.size", is(100)));
+
         // 8. Listado paginado con filtro
         mvc().perform(get("/api/productos").param("q", "laptop"))
                 .andExpect(status().isOk())
