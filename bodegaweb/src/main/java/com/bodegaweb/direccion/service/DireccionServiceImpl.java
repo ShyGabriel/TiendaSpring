@@ -9,7 +9,7 @@ import com.bodegaweb.direccion.dto.DireccionRequest;
 import com.bodegaweb.direccion.dto.DireccionResponse;
 import com.bodegaweb.direccion.entity.Direccion;
 import com.bodegaweb.direccion.repository.DireccionRepository;
-import com.bodegaweb.exceptions.ResourceNotFoundException;
+import com.bodegaweb.common.exception.ResourceNotFoundException;
 import com.bodegaweb.usuario.entity.Usuario;
 import com.bodegaweb.usuario.repository.UsuarioRepository;
 
