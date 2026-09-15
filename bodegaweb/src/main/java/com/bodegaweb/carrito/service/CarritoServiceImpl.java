@@ -7,6 +7,9 @@ import com.bodegaweb.carrito.entity.Carrito;
 import com.bodegaweb.carrito.entity.CarritoItem;
 import com.bodegaweb.carrito.repository.CarritoItemRepository;
 import com.bodegaweb.carrito.repository.CarritoRepository;
+import com.bodegaweb.catalogo.producto.Producto;
+import com.bodegaweb.catalogo.producto.ProductoRepository;
+import com.bodegaweb.common.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,11 +22,14 @@ public class CarritoServiceImpl implements CarritoService {
 
     private final CarritoRepository carritoRepository;
     private final CarritoItemRepository carritoItemRepository;
+    private final ProductoRepository productoRepository;
 
     public CarritoServiceImpl(CarritoRepository carritoRepository,
-                               CarritoItemRepository carritoItemRepository) {
+                               CarritoItemRepository carritoItemRepository,
+                               ProductoRepository productoRepository) {
         this.carritoRepository = carritoRepository;
         this.carritoItemRepository = carritoItemRepository;
+        this.productoRepository = productoRepository;
     }
 
     @Override
@@ -44,8 +50,9 @@ public class CarritoServiceImpl implements CarritoService {
                     nuevo.setCarrito(carrito);
                     nuevo.setProductoId(request.productoId());
                     nuevo.setCantidad(0);
-                    // TODO: cuando mergee feature/catalogo, traer el precio real del producto
-                    nuevo.setPrecioUnitario(BigDecimal.ZERO);
+                    Producto producto = productoRepository.findById(request.productoId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Producto", request.productoId()));
+                    nuevo.setPrecioUnitario(producto.getPrecio());
                     return nuevo;
                 });
 

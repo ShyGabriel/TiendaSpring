@@ -65,12 +65,14 @@ public class PedidoServiceImpl implements PedidoService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PedidoResponse obtener(Long id) {
         return toResponse(pedidoRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Pedido no encontrado: " + id)));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<PedidoResponse> listarPorUsuario(Long usuarioId) {
         return pedidoRepository.findByUsuarioId(usuarioId).stream()
                 .map(this::toResponse)
