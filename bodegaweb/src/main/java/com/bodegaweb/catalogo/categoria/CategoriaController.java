@@ -28,6 +28,7 @@ public class CategoriaController {
         this.service = service;
     }
 
+    /** Sin {@code padreId}: categorías raíz. Con {@code padreId}: hijas directas de esa categoría. */
     @GetMapping
     public ApiResponse<List<CategoriaResponse>> listar(
             @RequestParam(name = "padreId", required = false) Long padreId) {
