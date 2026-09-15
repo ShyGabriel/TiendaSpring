@@ -11,6 +11,7 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.LocalDateTime;
 
 /**
@@ -37,6 +38,16 @@ public class Inventario {
 
     @Column(name = "actualizado_en", nullable = false)
     private LocalDateTime actualizadoEn;
+
+    /**
+     * Bloqueo optimista: evita que dos ajustes de stock concurrentes
+     * (p. ej. dos compras al mismo tiempo) se pisen entre sí (lost update).
+     * Ante conflicto, Hibernate lanza {@code ObjectOptimisticLockingFailureException},
+     * mapeada a HTTP 409 en el manejador global.
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
 
     @PrePersist
     @PreUpdate
@@ -88,5 +99,13 @@ public class Inventario {
 
     public void setActualizadoEn(LocalDateTime actualizadoEn) {
         this.actualizadoEn = actualizadoEn;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 }

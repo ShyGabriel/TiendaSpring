@@ -1,6 +1,7 @@
 package com.bodegaweb.catalogo;
 
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -66,6 +67,18 @@ class CatalogoFlowTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].subcategorias[0].nombre", is("Laptops")));
 
+        // 3b. Listado sin padreId: solo raíces (no mezcla la subcategoría)
+        mvc().perform(get("/api/categorias"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()", is(1)))
+                .andExpect(jsonPath("$.data[0].nombre", is("Electrónica")));
+
+        // 3c. Listado con padreId: solo las hijas directas de esa categoría
+        mvc().perform(get("/api/categorias").param("padreId", String.valueOf(raizId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()", is(1)))
+                .andExpect(jsonPath("$.data[0].nombre", is("Laptops")));
+
         // 4. Producto con inventario inicial
         String prodBody = mvc().perform(post("/api/productos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -109,6 +122,11 @@ class CatalogoFlowTests {
                                 """))
                 .andExpect(status().isUnprocessableEntity());
 
+        // 7b. Pedir una pagina enorme queda topada por spring.data.web.pageable.max-page-size
+        mvc().perform(get("/api/productos").param("size", "99999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.size", is(100)));
+
         // 8. Listado paginado con filtro
         mvc().perform(get("/api/productos").param("q", "laptop"))
                 .andExpect(status().isOk())
@@ -132,6 +150,56 @@ class CatalogoFlowTests {
                 .andExpect(status().isNoContent());
         mvc().perform(get("/api/productos/{id}", prodId))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void eliminarCategoriaDesvinculaProductosAsociados() throws Exception {
+        String catBody = mvc().perform(post("/api/categorias")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre": "Accesorios"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long catId = idDe(catBody);
+
+        String prodBody = mvc().perform(post("/api/productos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sku": "ACC-001", "nombre": "Mouse inalámbrico", "precio": 49.90, "categoriaId": %d}
+                                """.formatted(catId)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long prodId = idDe(prodBody);
+
+        // Antes del fix: esto fallaba con 409 (violación de integridad) porque
+        // ddl-auto=update no genera ON DELETE SET NULL para productos.categoria_id.
+        mvc().perform(delete("/api/categorias/{id}", catId))
+                .andExpect(status().isNoContent());
+
+        mvc().perform(get("/api/productos/{id}", prodId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.categoriaId", nullValue()));
+    }
+
+    @Test
+    void ajusteStockConTipoInvalidoRetorna400NoInternalError() throws Exception {
+        String prodBody = mvc().perform(post("/api/productos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sku": "BAD-001", "nombre": "Producto de prueba", "precio": 10.0}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long prodId = idDe(prodBody);
+
+        // Antes del fix: un enum inválido en el body burbujeaba como 500.
+        mvc().perform(patch("/api/productos/{id}/inventario/ajuste", prodId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tipo": "NO_EXISTE", "delta": 1}
+                                """))
+                .andExpect(status().isBadRequest());
     }
 
     private long idDe(String responseBody) {

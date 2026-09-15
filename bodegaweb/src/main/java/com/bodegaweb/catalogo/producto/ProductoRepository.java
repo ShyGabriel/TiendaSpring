@@ -1,5 +1,6 @@
 package com.bodegaweb.catalogo.producto;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +18,16 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     boolean existsByCategoriaId(Long categoriaId);
 
+    /** Usado al eliminar una categoría, para desvincular sus productos (equivalente a ON DELETE SET NULL). */
+    List<Producto> findByCategoriaId(Long categoriaId);
+
+    /**
+     * Búsqueda por {@code LIKE '%q%'} sobre nombre/sku (funciona en MySQL y en H2 de test).
+     * El esquema de referencia define un FULLTEXT INDEX sobre (nombre, descripcion) que no se
+     * está usando: JPA/Hibernate no tiene una anotación portable para FULLTEXT de MySQL, y
+     * ddl-auto=update no lo genera. Para un catálogo grande, esto se vuelve un table scan y
+     * valdría la pena migrar a una consulta nativa contra ese índice.
+     */
     @Query(value = """
             select p from Producto p
             left join fetch p.categoria
