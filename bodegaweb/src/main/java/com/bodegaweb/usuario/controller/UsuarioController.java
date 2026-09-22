@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.bodegaweb.usuario.dto.UsuarioLoginRequest;
 import com.bodegaweb.usuario.dto.UsuarioRequest;
 import com.bodegaweb.usuario.dto.UsuarioResponse;
 import com.bodegaweb.usuario.service.UsuarioService;
@@ -54,10 +53,5 @@ public class UsuarioController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         usuarioService.delete(id);
         return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/login")
-    public UsuarioResponse login(@Valid @RequestBody UsuarioLoginRequest request) {
-        return usuarioService.login(request);
     }
 }

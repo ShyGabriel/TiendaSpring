@@ -2,12 +2,12 @@ package com.bodegaweb.usuario.service;
 
 import java.util.List;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.bodegaweb.common.exception.DuplicateResourceException;
-import com.bodegaweb.common.exception.InvalidCredentialsException;
 import com.bodegaweb.common.exception.ResourceNotFoundException;
-import com.bodegaweb.usuario.dto.UsuarioLoginRequest;
 import com.bodegaweb.usuario.dto.UsuarioRequest;
 import com.bodegaweb.usuario.dto.UsuarioResponse;
 import com.bodegaweb.usuario.entity.Usuario;
@@ -17,9 +17,11 @@ import com.bodegaweb.usuario.repository.UsuarioRepository;
 public class UsuarioServiceImpl implements UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UsuarioServiceImpl(UsuarioRepository usuarioRepository) {
+    public UsuarioServiceImpl(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -35,16 +37,21 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     @Override
+    @Transactional
     public UsuarioResponse create(UsuarioRequest request) {
         if (usuarioRepository.existsByEmail(request.email())) {
             throw new DuplicateResourceException("Ya existe un usuario con el email " + request.email());
         }
         Usuario usuario = new Usuario();
         applyRequest(usuario, request);
+        // El registro publico no puede auto-asignarse un rol; siempre nace como USUARIO.
+        // El rol se ajusta luego por un ADMIN via update.
+        usuario.setRol(Usuario.Rol.USUARIO);
         return toResponse(usuarioRepository.save(usuario));
     }
 
     @Override
+    @Transactional
     public UsuarioResponse update(Long id, UsuarioRequest request) {
         Usuario usuario = findEntityById(id);
         if (!usuario.getEmail().equalsIgnoreCase(request.email())
@@ -56,19 +63,10 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
         Usuario usuario = findEntityById(id);
         usuarioRepository.delete(usuario);
-    }
-
-    @Override
-    public UsuarioResponse login(UsuarioLoginRequest request) {
-        Usuario usuario = usuarioRepository.findByEmail(request.email())
-                .orElseThrow(() -> new InvalidCredentialsException("Credenciales invalidas"));
-        if (!usuario.getPassword().equals(request.password())) {
-            throw new InvalidCredentialsException("Credenciales invalidas");
-        }
-        return toResponse(usuario);
     }
 
     private Usuario findEntityById(Long id) {
@@ -80,7 +78,7 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuario.setNombre(request.nombre());
         usuario.setApellido(request.apellido());
         usuario.setEmail(request.email());
-        usuario.setPassword(request.password());
+        usuario.setPassword(passwordEncoder.encode(request.password()));
         usuario.setTelefono(request.telefono());
         if (request.rol() != null) {
             usuario.setRol(request.rol());

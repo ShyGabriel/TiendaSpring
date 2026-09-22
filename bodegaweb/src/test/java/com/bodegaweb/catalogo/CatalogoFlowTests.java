@@ -15,15 +15,19 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import com.bodegaweb.config.TestSecurityConfig;
+
 /**
  * Recorrido de humo del feature/catalogo: categoría jerárquica -> producto -> inventario (sub-recurso).
  */
-@SpringBootTest
+@SpringBootTest(properties = "app.security.enabled=false")
+@Import(TestSecurityConfig.class)
 class CatalogoFlowTests {
 
     private static final Pattern ID_PATTERN = Pattern.compile("\"id\"\\s*:\\s*(\\d+)");
