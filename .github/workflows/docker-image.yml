@@ -103,31 +103,29 @@ jobs:
     runs-on: self-hosted
     needs: package
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
+
+    defaults:
+      run:
+        shell: powershell
+
+  steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Compute image name
         id: img
-        shell: pwsh
         run: |
-          # Construye el nombre de la imagen de manera compatible con PowerShell en runners Windows
-          $registry = "${{ env.REGISTRY }}"
-          $imageName = "${{ env.IMAGE_NAME }}".ToLower()
-          $sha7 = $env:GITHUB_SHA.Substring(0,7)
-          $name = "$registry/$imageName:$sha7"
-          # Escribe la salida del paso en GITHUB_OUTPUT
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "name=$name"
-
+          $repo = "${{ env.IMAGE_NAME }}".ToLower()
+          $sha = "${{ github.sha }}".Substring(0,7)
+          "name=${{ env.REGISTRY }}/${repo}:${sha}" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
       - name: Apply manifests
-        shell: pwsh
-        run: |
-          # Reemplaza el placeholder en el manifiesto y aplica con kubectl (PowerShell-friendly)
-          $image = '${{ steps.img.outputs.name }}'
-          (Get-Content k8s/deployment.yaml) -replace 'IMAGE_PLACEHOLDER', $image | Set-Content replaced-deployment.yaml
-          kubectl --context docker-desktop apply -f replaced-deployment.yaml
-          kubectl --context docker-desktop apply -f k8s/service.yaml
+      run: |
+        (Get-Content k8s/deployment.yaml -Raw).Replace('IMAGE_PLACEHOLDER', '${{ steps.img.outputs.name }}') | kubectl --context docker-desktop apply -f -
 
-      - name: Wait for rollout
-        shell: pwsh
-        run: kubectl --context docker-desktop rollout status deployment/demo --timeout=180s
+        if ($LASTEXITCODE -ne 0) {
+          exit $LASTEXITCODE
+        }
+
+        kubectl --context docker-desktop apply -f k8s/service.yaml
+
+        - name: Wait for rollout
+      run: kubectl --context docker-desktop rollout status deployment/demo --timeout=180s
