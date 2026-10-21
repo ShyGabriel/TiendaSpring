@@ -18,10 +18,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '25'
           distribution: 'temurin'
 
       - name: Give execute permission to mvnw
@@ -37,10 +37,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '25'
           distribution: 'temurin'
 
       - name: Give execute permission to mvnw
@@ -59,10 +59,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '25'
           distribution: 'temurin'
 
       - name: Give execute permission to mvnw
@@ -103,29 +103,18 @@ jobs:
     runs-on: self-hosted
     needs: package
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    defaults:
-      run:
-        shell: powershell
-
-  steps:
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Compute image name
         id: img
-        run: |
-          $repo = "${{ env.IMAGE_NAME }}".ToLower()
-          $sha = "${{ github.sha }}".Substring(0,7)
-          "name=${{ env.REGISTRY }}/${repo}:${sha}" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        run: echo "name=${{ env.REGISTRY }}/$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]'):${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
       - name: Apply manifests
-      run: |
-        (Get-Content k8s/deployment.yaml -Raw).Replace('IMAGE_PLACEHOLDER', '${{ steps.img.outputs.name }}') | kubectl --context docker-desktop apply -f -
+        run: |
+          sed "s|IMAGE_PLACEHOLDER|${{ steps.img.outputs.name }}|" k8s/deployment.yaml | kubectl --context docker-desktop apply -f -
+          kubectl --context docker-desktop apply -f k8s/service.yaml
 
-        if ($LASTEXITCODE -ne 0) {
-          exit $LASTEXITCODE
-        }
-
-        kubectl --context docker-desktop apply -f k8s/service.yaml
-
-        - name: Wait for rollout
-      run: kubectl --context docker-desktop rollout status deployment/demo --timeout=180s
+      - name: Wait for rollout
+        run: kubectl --context docker-desktop rollout status deployment/demo --timeout=180s
