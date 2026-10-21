@@ -16,6 +16,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class JwtService {
 
+    /** Claim con el id del usuario; lo usa {@link AccesoService} para saber quién hace la petición. */
+    public static final String CLAIM_USUARIO_ID = "uid";
+
     private final JwtEncoder jwtEncoder;
     private final long expirationMs;
 
@@ -29,15 +32,17 @@ public class JwtService {
         String authorities = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(" "));
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
                 .issuer("bodegaweb")
                 .issuedAt(now)
                 .expiresAt(now.plus(expirationMs, ChronoUnit.MILLIS))
                 .subject(authentication.getName())
-                .claim("roles", authorities)
-                .build();
+                .claim("roles", authorities);
+        if (authentication.getPrincipal() instanceof UsuarioPrincipal principal) {
+            claims.claim(CLAIM_USUARIO_ID, principal.getUsuario().getId());
+        }
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
-        return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+        return jwtEncoder.encode(JwtEncoderParameters.from(header, claims.build())).getTokenValue();
     }
 
     public long getExpirationMs() {
