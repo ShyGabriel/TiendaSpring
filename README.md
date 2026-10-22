@@ -66,3 +66,5 @@ Si los puertos `8080` o `3307` ya están ocupados, modifica `APP_PORT` o `MYSQL_
 ### Publicación automática en GitHub
 
 El workflow `.github/workflows/docker-image.yml` construye y publica la imagen en GHCR. En cada push a `main`, intenta desplegarla además en un runner de GitHub Actions autohospedado. Ese runner requiere Docker y acceso a una instancia MySQL externa. Configura `MYSQL_URL`, `MYSQL_USER`, `MYSQL_PASSWORD` y `JWT_SECRET` como secretos del repositorio; la clave JWT debe tener al menos 32 caracteres.
+
+También puedes iniciarlo manualmente desde **Actions → Build and Push Docker Image → Run workflow**, seleccionando la rama `main`. El despliegue manual en `main` usa los mismos secretos del repositorio.
