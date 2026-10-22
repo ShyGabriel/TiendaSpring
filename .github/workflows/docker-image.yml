@@ -100,17 +100,33 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       packages: read
+    defaults:
+      run:
+        shell: powershell
     steps:
       - name: Compute image name
         id: img
-        run: echo "name=${{ env.REGISTRY }}/$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]'):${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        run: |
+          $repo = "${{ env.IMAGE_NAME }}".ToLower()
+          $sha  = "${{ github.sha }}".Substring(0, 7)
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "name=${{ env.REGISTRY }}/${repo}:${sha}"
 
       - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+        run: |
+          "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run container on Docker Desktop
         run: |
-          docker pull --platform linux/amd64 ${{ steps.img.outputs.name }}
-          docker rm -f app || true
-          docker run -d --name app --platform linux/amd64 -p 8080:8080 ${{ steps.img.outputs.name }}
+          $image = "${{ steps.img.outputs.name }}"
+
+          docker pull --platform linux/amd64 $image
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          # Elimina el contenedor anterior solo si existe
+          if (docker ps -aq -f "name=^app$") { docker rm -f app | Out-Null }
+
+          docker run -d --name app --platform linux/amd64 -p 8080:8080 $image
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
           docker image prune -f
