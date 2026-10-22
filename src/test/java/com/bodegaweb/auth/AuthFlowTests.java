@@ -3,6 +3,7 @@ package com.bodegaweb.auth;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -53,10 +54,25 @@ class AuthFlowTests {
                 .andReturn().getResponse().getContentAsString();
 
         String token = objectMapper.readTree(loginBody).at("/data/token").asText();
+        long usuarioId = objectMapper.readTree(loginBody).at("/data/usuario/id").asLong();
 
-        mvc.perform(get("/api/carritos/usuario/999")
+        // Su propio carrito: permitido
+        mvc.perform(get("/api/carritos/usuario/{id}", usuarioId)
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
+
+        // El carrito de otro usuario: prohibido aunque tenga token
+        mvc.perform(get("/api/carritos/usuario/{id}", usuarioId + 1000)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+
+        // Cambiar el estado de un pedido o un pago: solo ADMIN
+        mvc.perform(patch("/api/pedidos/1/estado").param("estado", "ENTREGADO")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+        mvc.perform(patch("/api/pagos/1/estado").param("estado", "APROBADO")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
     }
 
     @Test

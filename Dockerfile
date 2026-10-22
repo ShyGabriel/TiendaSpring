@@ -4,7 +4,7 @@
 FROM eclipse-temurin:21 AS build
 WORKDIR /workspace
 COPY . .
-RUN ./mvnw clean package -DskipTests
+RUN chmod +x mvnw && ./mvnw clean package -DskipTests
 
 # Runtime stage: lightweight Temurin JRE 25
 FROM eclipse-temurin:21-jre AS runtime

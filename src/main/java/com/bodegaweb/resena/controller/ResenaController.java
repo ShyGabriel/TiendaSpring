@@ -1,5 +1,6 @@
 package com.bodegaweb.resena.controller;
 
+import com.bodegaweb.auth.AccesoService;
 import com.bodegaweb.common.ApiResponse;
 import com.bodegaweb.resena.dto.ResenaRequest;
 import com.bodegaweb.resena.dto.ResenaResponse;
@@ -23,9 +24,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class ResenaController {
 
     private final ResenaService service;
+    private final AccesoService acceso;
 
-    public ResenaController(ResenaService service) {
+    public ResenaController(ResenaService service, AccesoService acceso) {
         this.service = service;
+        this.acceso = acceso;
     }
 
     @GetMapping
@@ -48,6 +51,7 @@ public class ResenaController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<ResenaResponse>> crear(@Valid @RequestBody ResenaRequest request) {
+        acceso.verificarPropietario(request.usuarioId());
         ResenaResponse creada = service.crear(request);
         return ResponseEntity
                 .created(URI.create("/api/resenas/" + creada.id()))
@@ -58,11 +62,14 @@ public class ResenaController {
     public ApiResponse<ResenaResponse> actualizar(
             @PathVariable Long id,
             @Valid @RequestBody ResenaRequest request) {
+        acceso.verificarPropietario(() -> service.obtener(id).usuarioId());
+        acceso.verificarPropietario(request.usuarioId());
         return ApiResponse.ok("Reseña actualizada", service.actualizar(id, request));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        acceso.verificarPropietario(() -> service.obtener(id).usuarioId());
         service.eliminar(id);
         return ResponseEntity.noContent().build();
     }
