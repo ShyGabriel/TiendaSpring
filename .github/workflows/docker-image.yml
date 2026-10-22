@@ -18,10 +18,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 25
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '25'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Give execute permission to mvnw
@@ -37,10 +37,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 25
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '25'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Give execute permission to mvnw
@@ -59,10 +59,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 25
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '25'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Give execute permission to mvnw
@@ -104,13 +104,6 @@ jobs:
       run:
         shell: powershell
     steps:
-      - name: Compute image name
-        id: img
-        run: |
-          $repo = "${{ env.IMAGE_NAME }}".ToLower()
-          $sha  = "${{ github.sha }}".Substring(0, 7)
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "name=${{ env.REGISTRY }}/${repo}:${sha}"
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -118,17 +111,45 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run container on Docker Desktop
+      - name: Pull and run container
+        env:
+          MYSQL_URL: ${{ secrets.MYSQL_URL }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
-          $image = "${{ steps.img.outputs.name }}"
+          $ErrorActionPreference = 'Stop'
+          $required = @('MYSQL_URL', 'MYSQL_USER', 'MYSQL_PASSWORD', 'JWT_SECRET')
+          $missing = $required | Where-Object {
+            [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_))
+          }
+          if ($missing) {
+            Write-Error "Missing required repository secrets: $($missing -join ', ')"
+            exit 1
+          }
+          if ($env:JWT_SECRET.Length -lt 32) {
+            Write-Error 'JWT_SECRET must contain at least 32 characters.'
+            exit 1
+          }
+
+          $repo = "${{ env.IMAGE_NAME }}".ToLowerInvariant()
+          $tag = "${{ github.sha }}".Substring(0, 7)
+          $image = "${{ env.REGISTRY }}/$repo" + ':' + $tag
 
           docker pull --platform linux/amd64 $image
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          # Elimina el contenedor anterior solo si existe
-          if (docker ps -aq -f "name=^app$") { docker rm -f app | Out-Null }
+          $existingContainer = docker ps -aq --filter "name=^/bodegaweb$"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($existingContainer) {
+            docker rm -f bodegaweb
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
-          docker run -d --name app --platform linux/amd64 -p 8080:8080 $image
+          docker run --detach --name bodegaweb --restart unless-stopped --platform linux/amd64 `
+            --publish 8080:8080 `
+            --env MYSQL_URL --env MYSQL_USER --env MYSQL_PASSWORD --env JWT_SECRET `
+            $image
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           docker image prune -f
