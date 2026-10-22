@@ -103,18 +103,27 @@ jobs:
     runs-on: self-hosted
     needs: package
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        shell: powershell
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Compute image name
         id: img
-        run: echo "name=${{ env.REGISTRY }}/$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]'):${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        run: |
+          $repo = "${{ env.IMAGE_NAME }}".ToLower()
+          $sha  = "${{ github.sha }}".Substring(0, 7)
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "name=${{ env.REGISTRY }}/${repo}:${sha}"
 
       - name: Apply manifests
         run: |
-          sed "s|IMAGE_PLACEHOLDER|${{ steps.img.outputs.name }}|" k8s/deployment.yaml | kubectl --context docker-desktop apply -f -
+          $image = "${{ steps.img.outputs.name }}"
+          (Get-Content k8s/deployment.yaml -Raw) -replace 'IMAGE_PLACEHOLDER', $image | kubectl --context docker-desktop apply -f -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           kubectl --context docker-desktop apply -f k8s/service.yaml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Wait for rollout
         run: kubectl --context docker-desktop rollout status deployment/demo --timeout=180s
