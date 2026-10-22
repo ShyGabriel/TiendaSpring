@@ -148,7 +148,7 @@ jobs:
           }
 
           docker run --detach --name bodegaweb --restart unless-stopped --platform linux/amd64 `
-            --publish 8080:8080 `
+            --publish 8081:8080 `
             --env MYSQL_URL --env MYSQL_USER --env MYSQL_PASSWORD --env JWT_SECRET `
             $image
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
