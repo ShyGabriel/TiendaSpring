@@ -100,6 +100,32 @@ class CarritoFlowTests {
                 .andExpect(jsonPath("$.items", hasSize(0)));
     }
 
+    @Test
+    void primerItemSobreCarritoNuevoDevuelveElItemEnLaRespuesta() throws Exception {
+        String prodBody = mvc().perform(post("/api/productos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sku": "CR-002", "nombre": "Cable USB", "precio": 25.00}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long prodId = idDe(prodBody);
+
+        // Sin consultar antes el carrito: debe crearse y devolver el item en la misma respuesta.
+        mvc().perform(post("/api/carritos/usuario/{usuarioId}/items", 2L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"productoId": %d, "cantidad": 1}
+                                """.formatted(prodId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usuarioId", is(2)))
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].productoId", is((int) prodId)))
+                .andExpect(jsonPath("$.items[0].cantidad", is(1)))
+                .andExpect(jsonPath("$.items[0].subtotal").value(closeTo(25.00, 0.001)))
+                .andExpect(jsonPath("$.total").value(closeTo(25.00, 0.001)));
+    }
+
     private long idDe(String responseBody) {
         Matcher m = ID_PATTERN.matcher(responseBody);
         if (!m.find()) {

@@ -53,13 +53,14 @@ public class CarritoServiceImpl implements CarritoService {
                     Producto producto = productoRepository.findById(request.productoId())
                             .orElseThrow(() -> new ResourceNotFoundException("Producto", request.productoId()));
                     nuevo.setPrecioUnitario(producto.getPrecio());
+                    carrito.getItems().add(nuevo);
                     return nuevo;
                 });
 
         item.setCantidad(item.getCantidad() + request.cantidad());
         carritoItemRepository.save(item);
 
-        return toResponse(carritoRepository.findById(carrito.getId()).orElseThrow());
+        return toResponse(carrito);
     }
 
     @Override
