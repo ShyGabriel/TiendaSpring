@@ -69,4 +69,4 @@ El workflow `.github/workflows/docker-image.yml` construye y publica la imagen e
 
 También puedes iniciarlo manualmente desde **Actions → Build and Push Docker Image → Run workflow**, seleccionando la rama `main`. El despliegue manual en `main` usa los mismos secretos del repositorio.
 
-El contenedor publicado por este workflow escucha en el puerto `8081` del runner (puerto interno `8080`) para evitar conflictos con el despliegue local de Docker Compose. La app desplegada por Actions queda en `http://<host-del-runner>:8081`.
+El contenedor publicado por este workflow escucha en el puerto `8081` del runner (puerto interno `8080`). Antes de iniciarlo, el workflow elimina los contenedores Docker que publiquen el puerto `8080` del host; no uses ese puerto para otros contenedores que necesites conservar. La app desplegada por Actions queda en `http://<host-del-runner>:8081`.

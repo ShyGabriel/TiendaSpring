@@ -147,6 +147,14 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
+          $containersOn8080 = @(docker ps -aq --filter "publish=8080")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($containersOn8080.Count -gt 0) {
+            Write-Host "Removing container(s) publishing host port 8080: $($containersOn8080 -join ', ')"
+            docker rm -f $containersOn8080
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
           docker run --detach --name bodegaweb --restart unless-stopped --platform linux/amd64 `
             --publish 8081:8080 `
             --env MYSQL_URL --env MYSQL_USER --env MYSQL_PASSWORD --env JWT_SECRET `
