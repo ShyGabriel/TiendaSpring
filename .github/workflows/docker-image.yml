@@ -153,4 +153,28 @@ jobs:
             $image
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+          $ready = $false
+          for ($attempt = 0; $attempt -lt 30; $attempt++) {
+            $containerState = docker inspect --format '{{.State.Status}}' bodegaweb
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if ($containerState -ne 'running') {
+              docker logs bodegaweb
+              throw "Container exited before the application became ready (state: $containerState)."
+            }
+
+            try {
+              $response = Invoke-WebRequest -Uri 'http://localhost:8081/v3/api-docs' -UseBasicParsing -TimeoutSec 5
+              if ($response.StatusCode -eq 200) {
+                $ready = $true
+                break
+              }
+            } catch {
+              Start-Sleep -Seconds 5
+            }
+          }
+          if (-not $ready) {
+            docker logs bodegaweb
+            throw 'Application did not become ready on port 8081 within 150 seconds.'
+          }
+
           docker image prune -f
