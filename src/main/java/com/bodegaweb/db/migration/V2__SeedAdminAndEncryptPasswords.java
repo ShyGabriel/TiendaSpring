@@ -2,6 +2,7 @@ package com.bodegaweb.db.migration;
 
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.List;
 import org.flywaydb.core.api.migration.BaseJavaMigration;
@@ -41,10 +42,12 @@ public class V2__SeedAdminAndEncryptPasswords extends BaseJavaMigration {
                 pendientes.add(new String[] { rs.getString("id"), password });
             }
         }
+        try (PreparedStatement up = context.getConnection()
+                .prepareStatement("update usuarios set password = ? where id = ?")) {
         for (String[] fila : pendientes) {
-            try (Statement up = context.getConnection().createStatement()) {
-                up.executeUpdate("update usuarios set password = '" + passwordEncoder.encode(fila[1])
-                        + "' where id = " + fila[0]);
+            up.setString(1, passwordEncoder.encode(fila[1]));
+            up.setLong(2, Long.parseLong(fila[0]));
+            up.executeUpdate();
             }
         }
     }
@@ -57,10 +60,15 @@ public class V2__SeedAdminAndEncryptPasswords extends BaseJavaMigration {
         }
         String adminPassword = System.getenv().getOrDefault("SEED_ADMIN_PASSWORD", "admin123");
         String hash = passwordEncoder.encode(adminPassword);
-        try (Statement ins = context.getConnection().createStatement()) {
-            ins.executeUpdate("insert into usuarios (nombre, apellido, email, password, rol, created_at) "
-                    + "values ('Admin', 'Bodega', 'admin@bodegaweb.com', '" + hash
-                    + "', 'ADMIN', CURRENT_TIMESTAMP)");
+        try (PreparedStatement ins = context.getConnection().prepareStatement(
+                "insert into usuarios (nombre, apellido, email, password, rol, created_at) "
+                        + "values (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)")) {
+            ins.setString(1, "Admin");
+            ins.setString(2, "Bodega");
+            ins.setString(3, "admin@bodegaweb.com");
+            ins.setString(4, hash);
+            ins.setString(5, "ADMIN");
+            ins.executeUpdate();
         }
     }
 }

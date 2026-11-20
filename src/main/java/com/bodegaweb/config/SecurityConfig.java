@@ -1,11 +1,11 @@
 package com.bodegaweb.config;
 
-import com.bodegaweb.auth.BodegaUserDetailsService;
-import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -32,6 +32,9 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.bodegaweb.auth.BodegaUserDetailsService;
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
+
 /**
  * Seguridad stateless con JWT (HS256).
  * Reemplaza a CorsConfig: CORS queda aquí, aplicado por el propio filtro de seguridad.
@@ -47,7 +50,10 @@ public class SecurityConfig {
     @ConditionalOnProperty(prefix = "app.security", name = "enabled", havingValue = "true", matchIfMissing = true)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                // CSRF deshabilitado: la API es stateless y autentica con JWT en el header
+                // Authorization Bearer, no con cookies. Si en el futuro el token se envía
+                // por cookie, hay que volver a habilitar CSRF.
+                .csrf(csrf -> csrf.disable())   // NOSONAR
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
